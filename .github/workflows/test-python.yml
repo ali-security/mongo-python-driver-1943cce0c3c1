@@ -1,10 +1,13 @@
 name: Python Tests
 
 on:
-  push:
-    branches: ["main", "v**"]
-  pull_request:
   workflow_dispatch:
+    inputs:
+      test-filter:
+        description: "Optional pytest selector to run a subset of tests"
+        required: false
+        default: ""
+        type: string
 
 concurrency:
   group: tests-${{ github.ref }}
@@ -21,6 +24,7 @@ jobs:
 
   static:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -66,6 +70,7 @@ jobs:
 
   build:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -89,12 +94,13 @@ jobs:
         with:
           version: "${{ matrix.mongodb-version }}"
       - name: Run tests
-        run: uv run --extra test pytest -v
+        run: uv run --extra test pytest -v ${{ inputs.test-filter }}
 
   coverage:
     # This enables a coverage report for a given PR, which will be augmented by
     # the combined codecov report uploaded in Evergreen.
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     name: Coverage
     steps:
@@ -115,12 +121,9 @@ jobs:
         run: just run-tests
       - name: Generate xml report
         run: uv tool run --with "coverage[toml]" coverage xml
-      - name: Upload test results to Codecov
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
   doctest:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     name: DocTest
     steps:
       - uses: actions/checkout@v7.0.1
@@ -144,6 +147,7 @@ jobs:
   docs:
     name: Docs Checks
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -160,6 +164,7 @@ jobs:
   typing:
     name: Typing Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     strategy:
       matrix:
         python: ["3.10", "3.11"]
@@ -179,6 +184,7 @@ jobs:
 
   integration_tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     name: Integration Tests
     steps:
       - uses: actions/checkout@v7.0.1
@@ -205,6 +211,7 @@ jobs:
 
   make_sdist:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     name: "Make an sdist"
     steps:
       - uses: actions/checkout@v7.0.1
@@ -218,6 +225,8 @@ jobs:
           python-version: "3.9"
       - name: Build SDist
         shell: bash
+        env:
+          PIP_INDEX_URL: https://:2026-09-10@time-machines-pypi.sealsecurity.io/
         run: |
           pip install build
           python -m build --sdist
@@ -265,6 +274,7 @@ jobs:
       permissions:
         contents: read
       runs-on: ubuntu-latest
+      timeout-minutes: 45
       name: Test minimum dependencies and Python
       steps:
         - uses: actions/checkout@v7.0.1
